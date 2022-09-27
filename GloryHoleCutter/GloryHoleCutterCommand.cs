@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using System;
@@ -18,6 +19,39 @@ namespace GloryHoleCutter
             Document doc = commandData.Application.ActiveUIDocument.Document;
             //Получение доступа к Selection
             Selection sel = commandData.Application.ActiveUIDocument.Selection;
+
+            //Общие параметры размеров
+            Guid intersectionPointWidthGuid = new Guid("8f2e4f93-9472-4941-a65d-0ac468fd6a5d");
+            Guid intersectionPointHeightGuid = new Guid("da753fe3-ecfa-465b-9a2c-02f55d0c2ff1");
+            Guid intersectionPointDiameterGuid = new Guid("9b679ab7-ea2e-49ce-90ab-0549d5aa36ff");
+
+            Guid heightOfBaseLevelGuid = new Guid("9f5f7e49-616e-436f-9acc-5305f34b6933");
+            Guid levelOffsetGuid = new Guid("515dc061-93ce-40e4-859a-e29224d80a10");
+
+            FamilySymbol intersectionWallRectangularFamilySymbol = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_GenericModel)
+                .OfClass(typeof(FamilySymbol))
+                .Cast<FamilySymbol>()
+                .FirstOrDefault(fs => fs.Family.Name.Equals("Отверстие_Стена_Прямоугольное"));
+
+            FamilySymbol intersectionWallRoundFamilySymbol = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_GenericModel)
+                .OfClass(typeof(FamilySymbol))
+                .Cast<FamilySymbol>()
+                .FirstOrDefault(fs => fs.Family.Name.Equals("Отверстие_Стена_Круглое"));
+
+            FamilySymbol intersectionFloorRectangularFamilySymbol = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_GenericModel)
+                .OfClass(typeof(FamilySymbol))
+                .Cast<FamilySymbol>()
+                .FirstOrDefault(fs => fs.Family.Name.Equals("Отверстие_Плита_Прямоугольное"));
+
+            FamilySymbol intersectionFloorRoundFamilySymbol = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_GenericModel)
+                .OfClass(typeof(FamilySymbol))
+                .Cast<FamilySymbol>()
+                .FirstOrDefault(fs => fs.Family.Name.Equals("Отверстие_Плита_Круглое"));
+
             //Получение точек вырезания
             List<FamilyInstance> intersectionPointList = new List<FamilyInstance>();
             intersectionPointList = GetIntersectionPointCurrentSelection(doc, sel);
@@ -38,41 +72,274 @@ namespace GloryHoleCutter
                 {
                     intersectionPointList.Add((doc.GetElement(refElem) as FamilyInstance));
                 }
+            }
 
-                List<FamilyInstance> intersectionWallRectangularList = new List<FamilyInstance>();
-                List<FamilyInstance> intersectionWallRoundList = new List<FamilyInstance>();
-                List<FamilyInstance> intersectionFloorRectangularList = new List<FamilyInstance>();
-                List<FamilyInstance> intersectionFloorRoundList = new List<FamilyInstance>();
+            List<FamilyInstance> intersectionWallRectangularList = new List<FamilyInstance>();
+            List<FamilyInstance> intersectionWallRoundList = new List<FamilyInstance>();
+            List<FamilyInstance> intersectionFloorRectangularList = new List<FamilyInstance>();
+            List<FamilyInstance> intersectionFloorRoundList = new List<FamilyInstance>();
 
-                foreach (FamilyInstance gH in intersectionPointList)
+            foreach (FamilyInstance gH in intersectionPointList)
+            {
+                if (gH.Symbol.Family.Name.Equals("Пересечение_Стена_Прямоугольное"))
                 {
-                    if(gH.Symbol.Family.Name.Equals("Пересечение_Стена_Прямоугольное"))
-                    {
-                        intersectionWallRectangularList.Add(gH);
-                    }
-                    else if (gH.Symbol.Family.Name.Equals("Пересечение_Стена_Круглое"))
-                    {
-                        intersectionWallRoundList.Add(gH);
-                    }
-                    else if (gH.Symbol.Family.Name.Equals("Пересечение_Плита_Прямоугольное"))
-                    {
-                        intersectionFloorRectangularList.Add(gH);
-                    }
-                    else if (gH.Symbol.Family.Name.Equals("Пересечение_Плита_Круглое"))
-                    {
-                        intersectionFloorRoundList.Add(gH);
-                    }
+                    intersectionWallRectangularList.Add(gH);
+                }
+                else if (gH.Symbol.Family.Name.Equals("Пересечение_Стена_Круглое"))
+                {
+                    intersectionWallRoundList.Add(gH);
+                }
+                else if (gH.Symbol.Family.Name.Equals("Пересечение_Плита_Прямоугольное"))
+                {
+                    intersectionFloorRectangularList.Add(gH);
+                }
+                else if (gH.Symbol.Family.Name.Equals("Пересечение_Плита_Круглое"))
+                {
+                    intersectionFloorRoundList.Add(gH);
                 }
             }
 
-            //Обработка прямоугольных пересечений со стеной
+            using (Transaction t = new Transaction(doc))
+            {
+                Options opt = new Options();
+                opt.ComputeReferences = true;
+                opt.DetailLevel = ViewDetailLevel.Fine;
 
-            //Обработка круглых пересечений со стеной
+                t.Start("Вырезание отверстий");
+                if (intersectionWallRectangularFamilySymbol != null)
+                {
+                    intersectionWallRectangularFamilySymbol.Activate();
+                }
+                if (intersectionWallRoundFamilySymbol != null)
+                {
+                    intersectionWallRoundFamilySymbol.Activate();
+                }
+                if (intersectionFloorRectangularFamilySymbol != null)
+                {
+                    intersectionFloorRectangularFamilySymbol.Activate();
+                }
+                if (intersectionFloorRoundFamilySymbol != null)
+                {
+                    intersectionFloorRoundFamilySymbol.Activate();
+                }
 
-            //Обработка прямоугольных пересечений с перекрытием
+                //Обработка прямоугольных пересечений со стеной
+                List<FamilyInstance> intersectionWallRectangularForDelList = new List<FamilyInstance>();
+                foreach (FamilyInstance gH in intersectionWallRectangularList)
+                {
+                    BoundingBoxXYZ bb = gH.get_BoundingBox(null);
+                    Outline myOutLn = new Outline(bb.Min, bb.Max);
+                    BoundingBoxIntersectsFilter filter = new BoundingBoxIntersectsFilter(myOutLn);
+                    //Получение стен
+                    List<Wall> wallsList = new FilteredElementCollector(doc)
+                        .OfCategory(BuiltInCategory.OST_Walls)
+                        .OfClass(typeof(Wall))
+                        .WhereElementIsNotElementType()
+                        .WherePasses(filter)
+                        .Cast<Wall>()
+                        .ToList();
 
-            //Обработка круглых пересечений с перекрытием
+                    foreach (Wall wall in wallsList)
+                    {
+                        GeometryElement geomElem = wall.get_Geometry(opt);
+                        foreach (GeometryObject geomObj in geomElem)
+                        {
+                            Solid wallSolid = geomObj as Solid;
+                            if (null != wallSolid)
+                            {
+                                Solid pointSolid = GetSolidFromIntersectionPoint(opt, gH);
+                                double intersectvolume = Math.Round(BooleanOperationsUtils.ExecuteBooleanOperation(wallSolid, pointSolid, BooleanOperationsType.Intersect).Volume, 6);
+                                if (intersectvolume > 0)
+                                {
+                                    FamilyInstance hole = doc.Create.NewFamilyInstance((gH.Location as LocationPoint).Point
+                                        , intersectionWallRectangularFamilySymbol
+                                        , wall
+                                        , doc.GetElement(gH.LevelId) as Level
+                                        , StructuralType.NonStructural) as FamilyInstance;
 
+                                    hole.get_Parameter(intersectionPointWidthGuid).Set(gH.get_Parameter(intersectionPointWidthGuid).AsDouble());
+                                    hole.get_Parameter(intersectionPointHeightGuid).Set(gH.get_Parameter(intersectionPointHeightGuid).AsDouble());
+                                    hole.get_Parameter(heightOfBaseLevelGuid).Set(gH.get_Parameter(heightOfBaseLevelGuid).AsDouble());
+                                    hole.get_Parameter(levelOffsetGuid).Set(gH.get_Parameter(levelOffsetGuid).AsDouble());
+                                    intersectionWallRectangularForDelList.Add(gH);
+                                }
+                            }
+                        }
+                    }
+                }
+                foreach(FamilyInstance gH in intersectionWallRectangularForDelList)
+                {
+                    try
+                    {
+                        doc.Delete(gH.Id);
+                    }
+                    catch
+                    {
+                        //Если элемент уже удалён
+                    }
+                }
+
+                //Обработка круглых пересечений со стеной
+                List<FamilyInstance> intersectionWallRoundForDelList = new List<FamilyInstance>();
+                foreach (FamilyInstance gH in intersectionWallRoundList)
+                {
+                    BoundingBoxXYZ bb = gH.get_BoundingBox(null);
+                    Outline myOutLn = new Outline(bb.Min, bb.Max);
+                    BoundingBoxIntersectsFilter filter = new BoundingBoxIntersectsFilter(myOutLn);
+                    //Получение стен
+                    List<Wall> wallsList = new FilteredElementCollector(doc)
+                        .OfCategory(BuiltInCategory.OST_Walls)
+                        .OfClass(typeof(Wall))
+                        .WhereElementIsNotElementType()
+                        .WherePasses(filter)
+                        .Cast<Wall>()
+                        .ToList();
+
+                    foreach (Wall wall in wallsList)
+                    {
+                        GeometryElement geomElem = wall.get_Geometry(opt);
+                        foreach (GeometryObject geomObj in geomElem)
+                        {
+                            Solid wallSolid = geomObj as Solid;
+                            if (null != wallSolid)
+                            {
+                                Solid pointSolid = GetSolidFromIntersectionPoint(opt, gH);
+                                double intersectvolume = Math.Round(BooleanOperationsUtils.ExecuteBooleanOperation(wallSolid, pointSolid, BooleanOperationsType.Intersect).Volume, 6);
+                                if (intersectvolume > 0)
+                                {
+                                    FamilyInstance hole = doc.Create.NewFamilyInstance((gH.Location as LocationPoint).Point
+                                        , intersectionWallRoundFamilySymbol
+                                        , wall
+                                        , doc.GetElement(gH.LevelId) as Level
+                                        , StructuralType.NonStructural) as FamilyInstance;
+
+                                    hole.get_Parameter(intersectionPointDiameterGuid).Set(gH.get_Parameter(intersectionPointDiameterGuid).AsDouble());
+                                    hole.get_Parameter(heightOfBaseLevelGuid).Set(gH.get_Parameter(heightOfBaseLevelGuid).AsDouble());
+                                    hole.get_Parameter(levelOffsetGuid).Set(gH.get_Parameter(levelOffsetGuid).AsDouble());
+                                    intersectionWallRoundForDelList.Add(gH);
+                                }
+                            }
+                        }
+                    }
+                }
+                foreach (FamilyInstance gH in intersectionWallRoundForDelList)
+                {
+                    try
+                    {
+                        doc.Delete(gH.Id);
+                    }
+                    catch
+                    {
+                        //Если элемент уже удалён
+
+                    }
+                }
+
+                    //Обработка прямоугольных пересечений с перекрытием
+                    List<FamilyInstance> intersectionFloorRectangularForDelList = new List<FamilyInstance>();
+                foreach (FamilyInstance gH in intersectionFloorRectangularList)
+                {
+                    BoundingBoxXYZ bb = gH.get_BoundingBox(null);
+                    Outline myOutLn = new Outline(bb.Min, bb.Max);
+                    BoundingBoxIntersectsFilter filter = new BoundingBoxIntersectsFilter(myOutLn);
+                    //Получение перекрытий
+                    List<Floor> floorsList = new FilteredElementCollector(doc)
+                        .OfCategory(BuiltInCategory.OST_Floors)
+                        .OfClass(typeof(Floor))
+                        .WhereElementIsNotElementType()
+                        .WherePasses(filter)
+                        .Cast<Floor>()
+                        .Where(f => f.get_Parameter(BuiltInParameter.FLOOR_PARAM_IS_STRUCTURAL).AsInteger() == 1)
+                        .ToList();
+
+                    foreach (Floor floor in floorsList)
+                    {
+                        GeometryElement geomElem = floor.get_Geometry(opt);
+                        foreach (GeometryObject geomObj in geomElem)
+                        {
+                            Solid floorSolid = geomObj as Solid;
+                            if (null != floorSolid)
+                            {
+                                Solid pointSolid = GetSolidFromIntersectionPoint(opt, gH);
+                                double intersectvolume = Math.Round(BooleanOperationsUtils.ExecuteBooleanOperation(floorSolid, pointSolid, BooleanOperationsType.Intersect).Volume, 6);
+                                if (intersectvolume > 0)
+                                {
+                                    FamilyInstance hole = doc.Create.NewFamilyInstance((gH.Location as LocationPoint).Point
+                                        , intersectionFloorRectangularFamilySymbol
+                                        , floor
+                                        , doc.GetElement(gH.LevelId) as Level
+                                        , StructuralType.NonStructural) as FamilyInstance;
+
+                                    hole.get_Parameter(intersectionPointWidthGuid).Set(gH.get_Parameter(intersectionPointWidthGuid).AsDouble());
+                                    hole.get_Parameter(intersectionPointHeightGuid).Set(gH.get_Parameter(intersectionPointHeightGuid).AsDouble());
+                                    if (Math.Round((gH.Location as LocationPoint).Rotation, 6) != 0)
+                                    {
+                                        Line axis = Line.CreateBound((gH.Location as LocationPoint).Point, (gH.Location as LocationPoint).Point + 1 * XYZ.BasisZ);
+                                        ElementTransformUtils.RotateElement(doc, hole.Id, axis, (gH.Location as LocationPoint).Rotation);
+                                    }
+                                    hole.get_Parameter(heightOfBaseLevelGuid).Set((doc.GetElement(hole.LevelId) as Level).Elevation);
+                                    hole.get_Parameter(levelOffsetGuid).Set(floor.get_Parameter(BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM).AsDouble());
+                                    intersectionFloorRectangularForDelList.Add(gH);
+                                }
+                            }
+                        }
+                    }
+                }
+                foreach (FamilyInstance gH in intersectionFloorRectangularForDelList)
+                {
+                    doc.Delete(gH.Id);
+                }
+
+                //Обработка круглых пересечений с перекрытием
+                List<FamilyInstance> intersectionFloorRoundForDelList = new List<FamilyInstance>();
+                foreach (FamilyInstance gH in intersectionFloorRoundList)
+                {
+                    BoundingBoxXYZ bb = gH.get_BoundingBox(null);
+                    Outline myOutLn = new Outline(bb.Min, bb.Max);
+                    BoundingBoxIntersectsFilter filter = new BoundingBoxIntersectsFilter(myOutLn);
+                    //Получение перекрытий
+                    List<Floor> floorsList = new FilteredElementCollector(doc)
+                        .OfCategory(BuiltInCategory.OST_Floors)
+                        .OfClass(typeof(Floor))
+                        .WhereElementIsNotElementType()
+                        .WherePasses(filter)
+                        .Cast<Floor>()
+                        .Where(f => f.get_Parameter(BuiltInParameter.FLOOR_PARAM_IS_STRUCTURAL).AsInteger() == 1)
+                        .ToList();
+
+                    foreach (Floor floor in floorsList)
+                    {
+                        GeometryElement geomElem = floor.get_Geometry(opt);
+                        foreach (GeometryObject geomObj in geomElem)
+                        {
+                            Solid floorSolid = geomObj as Solid;
+                            if (null != floorSolid)
+                            {
+                                Solid pointSolid = GetSolidFromIntersectionPoint(opt, gH);
+                                double intersectvolume = Math.Round(BooleanOperationsUtils.ExecuteBooleanOperation(floorSolid, pointSolid, BooleanOperationsType.Intersect).Volume, 6);
+                                if (intersectvolume > 0)
+                                {
+                                    FamilyInstance hole = doc.Create.NewFamilyInstance((gH.Location as LocationPoint).Point
+                                        , intersectionFloorRoundFamilySymbol
+                                        , floor
+                                        , doc.GetElement(gH.LevelId) as Level
+                                        , StructuralType.NonStructural) as FamilyInstance;
+
+                                    hole.get_Parameter(intersectionPointDiameterGuid).Set(gH.get_Parameter(intersectionPointDiameterGuid).AsDouble());
+                                    hole.get_Parameter(heightOfBaseLevelGuid).Set((doc.GetElement(hole.LevelId) as Level).Elevation);
+                                    hole.get_Parameter(levelOffsetGuid).Set(floor.get_Parameter(BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM).AsDouble());
+                                    intersectionFloorRoundForDelList.Add(gH);
+                                }
+                            }
+                        }
+                    }
+                }
+                foreach (FamilyInstance gH in intersectionFloorRoundForDelList)
+                {
+                    doc.Delete(gH.Id);
+                }
+                t.Commit();
+            }
             return Result.Succeeded;
         }
 
